@@ -63,6 +63,21 @@ load_with_ref <- function(file, data_sheet = 1, ref_sheet = 2) {
   return(data)
 }
 
+var_imp <- function(model) {
+  # Get sorted variable importance of a model
+  varImp <- caret::varImp(model) %>% 
+    arrange(desc(Overall)) %>% 
+    mutate(Index = row_number(),
+           Importance = Overall)
+  
+  varImp <- cbind(Variable = rownames(varImp), 
+                  varImp)
+  varImp <- varImp %>%
+    select(c("Index", "Variable", "Overall"))
+  
+  return(varImp)
+}
+
 # Test run if this is the main script
 if (interactive()) {
   variables <- c("A", "B", "C", "D")
