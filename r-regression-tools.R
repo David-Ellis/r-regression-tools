@@ -1,37 +1,42 @@
 require(dplyr)
 
-all_pairs <- function(output, variables) {
+write_formula <- function(output, variables, pairs = FALSE) {
   # Function to produce formula with all first-order marginal effects
   # e.g. output = A + B + C + A*B + A*C + B*C
 
-  # Get list of all possible pairs of variables
-  pairs <- expand.grid(variables, variables) %>%
-    # Don't include matching pairs
-    filter(Var1 != Var2) %>%
-    mutate(
-      # Interpret values as characters
-      Var1 = as.character(Var1),
-      Var2 = as.character(Var2),
-      # Interpret put them in alphabetical order in order to 
-      # remove doubles e.g. AB and BA 
-      Nvar1 = case_when(
-        Var1 < Var2 ~ Var1,
-        Var1 > Var2 ~ Var2,
-        TRUE ~ "ERROR"
-      ),
-      Nvar2 = case_when(
-        Var1 < Var2 ~ Var2,
-        Var1 > Var2 ~ Var1,
-        TRUE ~ "ERROR"
-      ), 
-      # Combine pair in one string E.g. A, B -> A*B
-      comb = paste(Nvar1, Nvar2, sep = "*")
-    ) %>%
-    select(comb) %>%
-    distinct()
+  if (pairs) {
+    # Get list of all possible pairs of variables
+    all_pairs <- expand.grid(variables, variables) %>%
+      # Don't include matching pairs
+      filter(Var1 != Var2) %>%
+      mutate(
+        # Interpret values as characters
+        Var1 = as.character(Var1),
+        Var2 = as.character(Var2),
+        # Interpret put them in alphabetical order in order to 
+        # remove doubles e.g. AB and BA 
+        Nvar1 = case_when(
+          Var1 < Var2 ~ Var1,
+          Var1 > Var2 ~ Var2,
+          TRUE ~ "ERROR"
+        ),
+        Nvar2 = case_when(
+          Var1 < Var2 ~ Var2,
+          Var1 > Var2 ~ Var1,
+          TRUE ~ "ERROR"
+        ), 
+        # Combine pair in one string E.g. A, B -> A*B
+        comb = paste(Nvar1, Nvar2, sep = "*")
+      ) %>%
+      select(comb) %>%
+      distinct()
+  } else {
+    all_pairs <- data.frame(matrix(ncol = 1, nrow = 0))
+    colnames(all_pairs) <- c('comb')
+  }
 
   # Create right hand side of formula
-  formula_rhs <- stringr::str_replace_all(toString(c(variables, pairs$comb)), ", ", " + ")
+  formula_rhs <- stringr::str_replace_all(toString(c(variables, all_pairs$comb)), ", ", " + ")
   
   # Create left hand side of formula
   formula_lhs <- paste(output, "~")
@@ -63,17 +68,21 @@ load_with_ref <- function(file, data_sheet = 1, ref_sheet = 2) {
   return(data)
 }
 
-var_imp <- function(model) {
+var_imp <- function(model, dp = 2) {
   # Get sorted variable importance of a model
+  
   varImp <- caret::varImp(model) %>% 
     arrange(desc(Overall)) %>% 
-    mutate(Index = row_number(),
-           Importance = Overall)
+    mutate(Rank = row_number(),
+           Importance = round(Overall, dp))
   
   varImp <- cbind(Variable = rownames(varImp), 
                   varImp)
   varImp <- varImp %>%
-    select(c("Index", "Variable", "Overall"))
+    select(c("Variable", "Importance", "Rank"))
+  
+  # Reset index
+  rownames(varImp) <- NULL
   
   return(varImp)
 }
