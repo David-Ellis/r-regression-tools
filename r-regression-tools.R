@@ -49,7 +49,12 @@ write_formula <- function(output, variables, pairs = FALSE) {
   return(final_formula)
 }
 
-load_with_ref <- function(file, data_sheet = 1, ref_sheet = 2) {
+load_with_ref <- function(file, 
+                          data_sheet = 1, 
+                          ref_sheet = 2,
+                          add_colon = TRUE,
+                          return_ref = FALSE
+                          ) {
   # Function for loading data and defining the reference group
   # ready for logistic regression
   
@@ -65,7 +70,17 @@ load_with_ref <- function(file, data_sheet = 1, ref_sheet = 2) {
     ##cat(col, ":", ref,"\n")
     data[[col]] <- relevel(factor(data[[col]]), ref = ref)
   }
-  return(data)
+  
+  if (add_colon) {
+    # Add colon to variable names to make processing regression results easier
+    colnames(data) <- paste(colnames(data), ":", sep = "")
+  } 
+  
+  if (return_ref) {
+    return(list(data, ref_group))
+  } else {
+    return(data)
+  }
 }
 
 var_imp <- function(model, dp = 2) {
@@ -91,5 +106,5 @@ var_imp <- function(model, dp = 2) {
 if (interactive()) {
   variables <- c("A", "B", "C", "D")
   my_output = "Output"
-  all_pairs(my_output, variables)
+  write_formula(my_output, variables)
 }
