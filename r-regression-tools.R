@@ -77,7 +77,11 @@ load_with_ref <- function(file,
   } 
   
   if (return_ref) {
-    return(list(data, ref_group))
+    # reshape reference group data.frame into 
+    return_ref <- reshape2::melt(ref_group, id = 0, value.name = "Reference Value", 
+                                 variable.name = "Variable")
+    
+    return(list(data, return_ref))
   } else {
     return(data)
   }
