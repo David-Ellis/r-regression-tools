@@ -106,6 +106,72 @@ var_imp <- function(model, dp = 2) {
   return(varImp)
 }
 
+odds_ratios <- function(model, rm_na = FALSE) {
+  # Get tidy odds ratio results with confidence intervals
+  
+  # calculate odds ratio and CI
+  odds_vals <- round(exp(coef(model))[-1],3)
+  conf_ints <- exp(confint(model))[-1, ]
+  
+  # delete these two
+  print(rownames(data.frame(odds_vals)))
+  print(rownames(data.frame(conf_ints)))
+  
+  # Create variable base
+  varnames <- rownames(data.frame(exp(coef(model))[-1]))
+  
+  variable_base <- data.frame(
+    FullVar = varnames,
+    `Variable.group.1` = str_split(varnames, ':', simplify = TRUE)[,1],
+    `Variable.group.2` = str_split(varnames, ':', simplify = TRUE)[,3],
+    `Variable.1` = str_split(varnames, ':', simplify = TRUE)[,2],
+    `Variable.2` = str_split(varnames, ':', simplify = TRUE)[,4]) %>%
+    mutate(
+      join = case_when(
+        `Variable.group.2` == "" ~ "",
+        TRUE ~ ":"
+        ),
+      `Variable.group` = paste(`Variable.group.1`, join, `Variable.group.2`, sep = ""),
+      `Variable` = paste(`Variable.1`, join, `Variable.2`, sep = ""),
+    ) %>%
+    select(c("FullVar", "Variable.group", "Variable"))
+  print(variable_base)
+  # %>%
+  # mutate(
+  #   `Variable group` = paste(`Variable group 1`, `Variable group 2`, sep = ":"),
+  #   `Variable` = paste(`Variable 1`, `Variable 2`, sep = ":")
+  # )
+  variable_base$`Variable.group` <- gsub("`", "",as.character(variable_base$`Variable.group`))
+  variable_base$Variable <- gsub("`","",as.character(variable_base$Variable))
+  
+  odds_ratios <- variable_base %>%
+    full_join(
+      data.frame(
+        FullVar = rownames(data.frame(odds_vals)),
+        `Odds Ratio` = odds_vals
+      )
+    ) %>%
+    full_join(
+      data.frame(
+        FullVar = rownames(data.frame(conf_ints)),
+        `Conf int lower` = round(conf_ints[,1],3),
+        `Conf int upper` = round(conf_ints[,2],3)
+      )
+    ) %>%
+    select(c("Variable.group", "Variable",  "Odds.Ratio", 
+             "Conf.int.lower", "Conf.int.upper"))
+  
+  colnames(odds_ratios) = c("Variable group", "Variable", "Odds Ratio", 
+                         "Conf int lower", "Conf int upper")
+  
+  if (rm_na) {
+    # Remove rows with NAs
+    odds_ratios <- na.omit(odds_ratios)
+  }
+  
+  return(odds_ratios)
+}
+
 # Test run if this is the main script
 if (interactive()) {
   variables <- c("A", "B", "C", "D")
