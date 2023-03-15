@@ -113,10 +113,6 @@ odds_ratios <- function(model, rm_na = FALSE) {
   odds_vals <- round(exp(coef(model))[-1],3)
   conf_ints <- exp(confint(model))[-1, ]
   
-  # delete these two
-  print(rownames(data.frame(odds_vals)))
-  print(rownames(data.frame(conf_ints)))
-  
   # Create variable base
   varnames <- rownames(data.frame(exp(coef(model))[-1]))
   
