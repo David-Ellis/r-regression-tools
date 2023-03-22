@@ -106,7 +106,9 @@ var_imp <- function(model, dp = 2) {
   return(varImp)
 }
 
-odds_ratios <- function(model, rm_na = FALSE) {
+odds_ratios <- function(model, 
+                        ref = NULL, 
+                        rm_na = FALSE) {
   # Get tidy odds ratio results with confidence intervals
   
   # calculate odds ratio and CI
@@ -159,13 +161,38 @@ odds_ratios <- function(model, rm_na = FALSE) {
   
   colnames(odds_ratios) = c("Variable group", "Variable", "Odds Ratio", 
                          "Conf int lower", "Conf int upper")
-  
   if (rm_na) {
     # Remove rows with NAs
     odds_ratios <- na.omit(odds_ratios)
   }
   
-  return(odds_ratios)
+  if (!is.null(ref)) {
+    
+    used_ref <- ref %>%
+      # filter to just relevant reference values
+      filter(`Variable` %in% odds_ratios$`Variable group`) %>%
+      # Update column names and refine reference ratio values
+      mutate(
+        `Variable group` = Variable,
+        Variable = `Reference Value`,
+        `Odds Ratio` = 1,
+        `Conf int lower` = "Ref",
+        `Conf int upper` = "Ref"
+        ) %>%
+      select(c("Variable group", "Variable", "Odds Ratio", 
+               "Conf int lower", "Conf int upper"))
+    
+    # Join to calculated risk ratios
+    odds_ratios <- rbind(odds_ratios, used_ref)
+  }
+  
+  # Sort results alphabetically by group then outcome
+  odds_ratios_sorted <- odds_ratios %>% 
+    arrange(`Variable group`) %>% 
+    group_by(`Variable group`) %>% 
+    arrange(`Variable`, .by_group = TRUE)
+  
+  return(odds_ratios_sorted)
 }
 
 # Test run if this is the main script
