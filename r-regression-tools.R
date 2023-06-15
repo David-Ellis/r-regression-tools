@@ -1,9 +1,13 @@
 require(dplyr)
 
-write_formula <- function(output, variables, pairs = FALSE) {
+write_formula <- function(output, variables, pairs = FALSE, quote_wrap = FALSE) {
   # Function to produce formula with all first-order marginal effects
   # e.g. output = A + B + C + A*B + A*C + B*C
 
+  if (quote_wrap) {
+    variables = paste("`", variables, "`", sep = "")
+  }
+  
   if (pairs) {
     # Get list of all possible pairs of variables
     all_pairs <- expand.grid(variables, variables) %>%
@@ -52,6 +56,7 @@ write_formula <- function(output, variables, pairs = FALSE) {
 load_with_ref <- function(file, 
                           data_sheet = 1, 
                           ref_sheet = 2,
+                          seperate_ref_sheet = NULL,
                           add_colon = TRUE,
                           return_ref = FALSE
                           ) {
@@ -59,16 +64,27 @@ load_with_ref <- function(file,
   # ready for logistic regression
   
   # Load data
-  data <- readxl::read_excel(file, sheet = data_sheet)
+  file_type = str_split(file, "[.]",2)[[1]][2]
+  if (file_type == "xlsx") {
+    data <- readxl::read_excel(file, sheet = data_sheet)
+  } else if (file_type == "parquet") {
+    library(arrow)
+    data <- read_parquet(file)
+  }
   
-  # Define reference group
-  ref_group <- readxl::read_excel(file,
-                                  sheet = "reference")
+  if (is.null(seperate_ref_sheet)) {
+    # Define reference group
+    ref_group <- readxl::read_excel(file,
+                                    sheet = ref_sheet)    
+  } else {
+    ref_group <- readxl::read_excel(seperate_ref_sheet,
+                                    sheet = ref_sheet)  
+  }
   
-  for (col in colnames(ref_group)){
-    ref = ref_group[col][[1]]
-    ##cat(col, ":", ref,"\n")
-    data[[col]] <- relevel(factor(data[[col]]), ref = ref)
+  for (column_name in colnames(ref_group)){
+    ref = ref_group[column_name][[1]]
+    cat(column_name, ":", ref,"\n")
+    data[[column_name]] <- relevel(factor(data[[column_name]]), ref = ref)
   }
   
   if (add_colon) {
